@@ -1,9 +1,10 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using MongoDB.Bson.Serialization.Serializers;
+using MongoDB.Bson.Serialization;
+using MongoDB.Bson;
 using System.Reflection;
 using System.Text;
 using TestWebApp;
@@ -12,6 +13,7 @@ using TestWebApp.AutoMapper.User;
 using TestWebApp.Options;
 using TestWebApp.Repository;
 using TestWebApp.Services.Auth;
+using TestWebApp.AutoMapper.Book;
 
 var builder = WebApplication.CreateBuilder(args);
 var services = builder.Services;
@@ -58,13 +60,15 @@ services.AddScoped<IUserRepository, UserRepository>();
 services.AddScoped<IJwtProvider, JwtProvider>();
 services.ConfigureOptions<JwtOptionsSetup>();
 
-
+services.Configure<BookStoreDatabaseSettings>(builder.Configuration.GetSection("MongoDb"));
+services.AddScoped<BooksRepository>();
+BsonSerializer.RegisterSerializer(new GuidSerializer(GuidRepresentation.Standard));
 services.AddAuthentication().AddJwtBearer(o =>
 {
     var option = builder.Configuration
                         .GetSection("Jwt")
                         .Get<JwtOptions>();
-    
+
     o.TokenValidationParameters = new TokenValidationParameters()
     {
         ValidateIssuer = true,
@@ -82,6 +86,7 @@ services.AddAutoMapper(conf =>
 {
     conf.AddProfile<TaskProfile>();
     conf.AddProfile<UserProfile>();
+    conf.AddProfile<BookProfile>();
 });
 
 var app = builder.Build();
